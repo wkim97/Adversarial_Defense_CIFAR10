@@ -2,6 +2,7 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 from utils import save_image
+from tqdm import tqdm
 
 use_gpu = torch.cuda.is_available()
 batch_size = 1
@@ -22,52 +23,55 @@ def main():
     train_index = 0
     test_index = 0
 
-    for data in dataloader:
-        image, label = data
-        if use_gpu:
-            image, label = image.cuda(), label.cuda()
-        selected_class = label.detach().cpu().numpy()[0]
-        read_path = './data/noise_models/noise_models/{}'.format(classes[selected_class])
+    with tqdm(total=(50000 - 50000 % batch_size)) as _tqdm:
+        _tqdm.set_description('Applying noise model')
+        for data in dataloader:
+            image, label = data
+            if use_gpu:
+                image, label = image.cuda(), label.cuda()
+            selected_class = label.detach().cpu().numpy()[0]
+            read_path = './data/noise_models/noise_models/{}'.format(classes[selected_class])
 
-        if num_per_class[selected_class] < 5000:
-            noise_dataset = torchvision.datasets.ImageFolder(
-                root=read_path, transform=transforms)
-            noise_dataloader = torch.utils.data.DataLoader(
-                noise_dataset, batch_size=batch_size, shuffle=True)
+            if num_per_class[selected_class] < 5000:
+                noise_dataset = torchvision.datasets.ImageFolder(
+                    root=read_path, transform=transforms)
+                noise_dataloader = torch.utils.data.DataLoader(
+                    noise_dataset, batch_size=batch_size, shuffle=True)
 
-            store_path = './data/noisy_CIFAR10/train/generated_noisy_images/images'
-            clean_path = './data/noisy_CIFAR10/train/clean_images/images'
-            for i in range(10):
-                noise, _ = next(iter(noise_dataloader))
-                if use_gpu:
-                    noise = noise.cuda()
-                noisy_image = image + noise
-                save_image(noisy_image, store_path + '/{}.png'.format(train_index))
-                save_image(image, clean_path + '/{}.png'.format(train_index))
-                num_per_class[selected_class] += 1
-                train_index += 1
-            print("Generating training noisy image {} for class {}".format(train_index,
-                                                                           classes[selected_class]))
-            print(num_per_class)
+                store_path = './data/noisy_CIFAR10/train/generated_noisy_images/images'
+                clean_path = './data/noisy_CIFAR10/train/clean_images/images'
+                for i in range(10):
+                    noise, _ = next(iter(noise_dataloader))
+                    if use_gpu:
+                        noise = noise.cuda()
+                    noisy_image = image + noise
+                    save_image(noisy_image, store_path + '/{}.png'.format(train_index))
+                    save_image(image, clean_path + '/{}.png'.format(train_index))
+                    num_per_class[selected_class] += 1
+                    train_index += 1
+                # print("Generating training noisy image {} for class {}".format(train_index,
+                #                                                                classes[selected_class]))
+                # print(num_per_class)
+                _tqdm.update(batch_size)
 
 
-        elif test_num_per_class[selected_class] < 1000:
-            noise_dataset = torchvision.datasets.ImageFolder(
-                root=read_path, transform=transforms)
-            noise_dataloader = torch.utils.data.DataLoader(
-                noise_dataset, batch_size=batch_size, shuffle=True)
-
-            store_path = './data/noisy_CIFAR10/test/generated_noisy_images/images'
-            clean_path = './data/noisy_CIFAR10/test/clean_images/images'
-            for i in range(10):
-                noise, _ = next(iter(noise_dataloader))
-                if use_gpu:
-                    noise = noise.cuda()
-                noisy_image = image + noise
-                save_image(noisy_image, store_path + '/{}.png'.format(test_index))
-                save_image(image, clean_path + '/{}.png'.format(test_index))
-                test_num_per_class[selected_class] += 1
-                test_index += 1
-            print("Generating testing noisy image {} for class {}".format(test_index,
-                                                                          classes[selected_class]))
-            print(test_num_per_class)
+        # elif test_num_per_class[selected_class] < 1000:
+        #     noise_dataset = torchvision.datasets.ImageFolder(
+        #         root=read_path, transform=transforms)
+        #     noise_dataloader = torch.utils.data.DataLoader(
+        #         noise_dataset, batch_size=batch_size, shuffle=True)
+        #
+        #     store_path = './data/noisy_CIFAR10/test/generated_noisy_images/images'
+        #     clean_path = './data/noisy_CIFAR10/test/clean_images/images'
+        #     for i in range(10):
+        #         noise, _ = next(iter(noise_dataloader))
+        #         if use_gpu:
+        #             noise = noise.cuda()
+        #         noisy_image = image + noise
+        #         save_image(noisy_image, store_path + '/{}.png'.format(test_index))
+        #         save_image(image, clean_path + '/{}.png'.format(test_index))
+        #         test_num_per_class[selected_class] += 1
+        #         test_index += 1
+        #     print("Generating testing noisy image {} for class {}".format(test_index,
+        #                                                                   classes[selected_class]))
+        #     print(test_num_per_class)

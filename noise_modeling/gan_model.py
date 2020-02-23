@@ -1,7 +1,6 @@
 from __future__ import print_function
 import torch.nn as nn
 
-
 #############################################################################################################
 # Generator
 #############################################################################################################
@@ -11,7 +10,7 @@ class Generator(nn.Module):
         self.ngpu = ngpu
         self.main = nn.Sequential(
             nn.ConvTranspose2d(in_channels=100, out_channels=32 * 8,
-                               kernel_size=7, stride=1, padding=0,
+                               kernel_size=8, stride=1, padding=0,
                                bias=False),
             nn.BatchNorm2d(num_features=32 * 8),
             nn.ReLU(inplace=True),
@@ -50,7 +49,7 @@ class Discriminator(nn.Module):
             nn.BatchNorm2d(num_features=32 * 8),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(in_channels=32 * 8, out_channels=1,
-                      kernel_size=7, stride=1, padding=0,
+                      kernel_size=8, stride=1, padding=0,
                       bias=False),
             nn.Sigmoid())
 

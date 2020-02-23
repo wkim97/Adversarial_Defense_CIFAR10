@@ -1,0 +1,37 @@
+Clean dataset
+Avg Accuracy, 81.4200 %
+Accuracy of plane, 85.2000 %
+Accuracy of car, 91.1000 %
+Accuracy of bird, 73.7000 %
+Accuracy of cat, 64.2000 %
+Accuracy of deer, 78.0000 %
+Accuracy of dog, 72.9000 %
+Accuracy of frog, 83.0000 %
+Accuracy of horse, 85.7000 %
+Accuracy of ship, 91.6000 %
+Accuracy of truck, 88.8000 %
+Untargeted fgsm attack
+Avg Accuracy, 25.6700 %
+Accuracy of plane, 32.8000 %
+Accuracy of car, 30.6000 %
+Accuracy of bird, 23.4000 %
+Accuracy of cat, 13.1000 %
+Accuracy of deer, 30.7000 %
+Accuracy of dog, 22.6000 %
+Accuracy of frog, 24.5000 %
+Accuracy of horse, 23.4000 %
+Accuracy of ship, 34.8000 %
+Accuracy of truck, 20.8000 %
+Targeted fgsm attack
+Avg Accuracy, 12.0400 %
+Accuracy of plane, 12.7000 %
+Accuracy of car, 11.7000 %
+Accuracy of bird, 14.0000 %
+Accuracy of cat, 10.2000 %
+Accuracy of deer, 19.0000 %
+Accuracy of dog, 10.9000 %
+Accuracy of frog, 12.7000 %
+Accuracy of horse, 7.9000 %
+Accuracy of ship, 16.1000 %
+Accuracy of truck, 5.2000 %
+Untargeted bim attack

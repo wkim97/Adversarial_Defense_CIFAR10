@@ -5,8 +5,8 @@ from noise_modeling import add_noise_to_clean
 # from denoising import DnCNN_train
 # from denoising import DnCNN_test
 
-apply_noise.main()
-noise_extraction.main()
+# apply_noise.main()
+# noise_extraction.main()
 train_gan.main()
 add_noise_to_clean.main()
 # DnCNN_train.main()

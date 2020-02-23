@@ -15,8 +15,13 @@ import matplotlib.pyplot as plt
 from torch.autograd import Variable
 from noise_modeling.gan_model import Generator
 from noise_modeling.gan_model import Discriminator
-from utils import save_image
+import os
+from tqdm import tqdm
+from utils import AverageMeter
 
+os.chdir('/home/sgvr/wkim97/Adversarial_Defense_CIFAR10')
+path = os.getcwd()
+# print(path)
 ###################################################################################################
 # Initialize file paths and other variables
 ###################################################################################################
@@ -34,6 +39,7 @@ def train(selected_class):
     num_epochs = 500
     batch_size = 25
     ngpu = torch.cuda.device_count()
+
 
     #############################################################################################################
     # Call in data
@@ -100,7 +106,7 @@ def train(selected_class):
         data = data.reshape((n, n) + data.shape[1:]).transpose((0, 2, 1, 3)
                                                                + tuple(range(4, data.ndim + 1)))
         data = data.reshape((n * data.shape[1], n * data.shape[3]) + data.shape[4:])
-        fig = plt.imsave(path, data)
+        fig = plt.imsave(path, data, cmap='gray')
         plt.close(fig)
 
 
@@ -117,6 +123,8 @@ def train(selected_class):
         z_fixed = z_fixed.cuda()
 
     img_list = []
+    G_losses = []
+    D_losses = []
     iters = 0
 
     for epoch in range(num_epochs):
@@ -128,62 +136,77 @@ def train(selected_class):
         generator_path = pgd_generator_path
         discriminator_path = pgd_discriminator_path
 
-        for i, (real_data, _) in enumerate(dataloader):
-            real_data = Variable(real_data)
-            label_real = Variable(torch.ones(batch_size))
-            label_fake = Variable(torch.zeros(batch_size))
-            if use_gpu:
-                real_data, label_real, label_fake = real_data.cuda(), label_real.cuda(), label_fake.cuda()
-            z = Variable(torch.randn((batch_size, 100)))
-            if use_gpu:
-                z = z.cuda()
-            fake_data = G(z)
+        g_losses = AverageMeter()
+        d_losses = AverageMeter()
+        with tqdm(total=(len(pgd_dataset) - len(pgd_dataset) % batch_size)) as _tqdm:
+            _tqdm.set_description('{} epoch: {}/{}'.format(selected_class, epoch + 1, num_epochs))
+            for i, (real_data, _) in enumerate(dataloader):
+                real_data = Variable(real_data)
+                label_real = Variable(torch.ones(batch_size))
+                label_fake = Variable(torch.zeros(batch_size))
+                if use_gpu:
+                    real_data, label_real, label_fake = real_data.cuda(), label_real.cuda(), label_fake.cuda()
+                z = Variable(torch.randn(batch_size, 100, 1, 1))
+                if use_gpu:
+                    z = z.cuda()
+                fake_data = G(z)
 
-            D.zero_grad()
-            real_output = D(real_data)
-            D_loss_real = criterion(real_output, label_real)
+                D.zero_grad()
+                real_output = D(real_data)
+                D_loss_real = criterion(real_output, label_real)
 
-            fake_output = D(fake_data)
-            D_loss_fake = criterion(fake_output, label_fake)
-            D_loss = D_loss_real + D_loss_fake
-            D_loss.backward()
-            D_optimizer.step()
-            D_x = real_output.mean().item()
+                fake_output = D(fake_data)
+                D_loss_fake = criterion(fake_output, label_fake)
+                D_loss = D_loss_real + D_loss_fake
+                D_loss.backward()
+                D_optimizer.step()
+                D_x = real_output.mean().item()
 
-            D_losses.append(D_loss.data)
+                D_losses.append(D_loss.data)
 
-            z = Variable(torch.randn((batch_size, 100)))
-            if use_gpu:
-                z = z.cuda()
-            fake_data = G(z)
-            fake_output = D(fake_data)
-            G.zero_grad()
-            G_loss = criterion(fake_output, label_real)
+                z = Variable(torch.randn((batch_size, 100)))
+                if use_gpu:
+                    z = z.cuda()
+                fake_data = G(z)
+                fake_output = D(fake_data)
+                G.zero_grad()
+                G_loss = criterion(fake_output, label_real)
 
-            G_loss.backward()
-            G_optimizer.step()
-            D_G_z = fake_output.mean().item()
-            G_losses.append(G_loss.data)
+                G_loss.backward()
+                G_optimizer.step()
+                D_G_z = fake_output.mean().item()
+                G_losses.append(G_loss.data)
 
-            if i % 50 == 0:
-                print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)):%.4f'
-                      % (epoch + 1, num_epochs, i, len(dataloader),
-                         D_loss.item(), G_loss.item(), D_x, D_G_z))
-                G_losses.append(G_loss.item())
-                D_losses.append(D_loss.item())
-                if (iters % 500 == 0) or ((epoch == num_epochs - 1) and (i == len(dataloader) - 1)):
-                    with torch.no_grad():
-                        fake = G(z_fixed).detach().cpu()
-                    img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
-                iters += 1
+                d_losses.update(D_loss.data, len(real_data))
+                g_losses.update(G_loss.data, len(fake_data))
+
+                if i % 50 == 0:
+                    # print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)):%.4f'
+                    #       % (epoch + 1, num_epochs, i, len(dataloader),
+                    #          D_loss.item(), G_loss.item(), D_x, D_G_z))
+                    G_losses.append(G_loss.item())
+                    D_losses.append(D_loss.item())
+                    if (iters % 500 == 0) or ((epoch == num_epochs - 1) and (i == len(dataloader) - 1)):
+                        with torch.no_grad():
+                            fake = G(z_fixed).detach().cpu()
+                        img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
+                    iters += 1
+
+                _tqdm.set_postfix(G_loss='{:.4f}'.format(G_loss.item()),
+                                  D_loss='{:.4f}'.format(D_loss.item()))
+                _tqdm.update(batch_size)
 
         # Save individual images at the end of training
         if epoch == num_epochs - 1:
-            for j in range(5000):
+            for j in range(500):
                 path = model_path + '/noise{}.png'.format(j)
                 noise = Variable(torch.randn(1, 100)).cuda()
                 image = G(noise)
-                save_image(image, path)
+                fig = plt.figure()
+                ax = plt.axis("off")
+                sample = np.transpose(vutils.make_grid(image, normalize=True).cpu().detach().numpy(), (1, 2, 0))
+                plt.imsave(path, sample, cmap="gray")
+                plt.close(fig)
 
         true_positive_rate = (real_output > 0.5).float().mean().data  # Probability real image classified as real
         true_negative_rate = (fake_output < 0.5).float().mean().data  # Probability fake image classified as fake
@@ -195,11 +218,11 @@ def train(selected_class):
             g_loss=sum(G_losses) / len(G_losses),
             tpr=true_positive_rate,
             tnr=true_negative_rate)
-        print(message)
+        # print(message)
 
         fake_data_fixed = G(z_fixed)
         image_path = training_path + '/epoch{}.png'.format(epoch)
-        square_plot(fake_data_fixed.view(25, 28, 28).cpu().data.numpy(), path=image_path)
+        # square_plot(fake_data_fixed.view(25, 32, 32).cpu().data.numpy(), path=image_path)
         generated_images.append(image_path)
 
         train_hist['D_losses'].append(torch.mean(torch.FloatTensor(D_losses)))
@@ -208,10 +231,10 @@ def train(selected_class):
     torch.save(G.state_dict(), generator_path)
     torch.save(D.state_dict(), discriminator_path)
 
-    generated_image_array = [imageio.imread(generated_image) for generated_image in generated_images]
-    imageio.mimsave(training_path + '/GAN_generation.gif', generated_image_array, fps=5)
 
 def main():
     for i in range(10):
+        if i < 3:
+            continue
         selected_class = classes[i]
         train(selected_class)
