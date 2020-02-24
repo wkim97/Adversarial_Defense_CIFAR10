@@ -253,7 +253,7 @@ def test(attack, denoise, targeted, epoch):
             for j, data in enumerate(testloader, 0):
                 if attack == "cw" and count >= 500:
                     break
-                if attack == "jsma" and count >= 2000:
+                if attack == "jsma" and count >= 3000:
                     break
                 images, labels = data
                 if use_gpu:

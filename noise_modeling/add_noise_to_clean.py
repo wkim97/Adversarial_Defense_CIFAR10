@@ -1,8 +1,11 @@
+import os
 import torch
 import torchvision
 import torchvision.transforms as transforms
 from utils import save_image
 from tqdm import tqdm
+
+os.chdir('/home/sgvr/wkim97/Adversarial_Defense_CIFAR10')
 
 use_gpu = torch.cuda.is_available()
 batch_size = 1
@@ -20,10 +23,11 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship'
 
 
 def main():
-    train_index = 0
-    test_index = 0
+    train_index = 1
+    class_num = 500
+    noise_num = 40
 
-    with tqdm(total=(50000 - 50000 % batch_size)) as _tqdm:
+    with tqdm(total=(class_num * noise_num * 10 - class_num * noise_num * 10 % train_index)) as _tqdm:
         _tqdm.set_description('Applying noise model')
         for data in dataloader:
             image, label = data
@@ -32,7 +36,7 @@ def main():
             selected_class = label.detach().cpu().numpy()[0]
             read_path = './data/noise_models/noise_models/{}'.format(classes[selected_class])
 
-            if num_per_class[selected_class] < 5000:
+            if num_per_class[selected_class] < class_num:
                 noise_dataset = torchvision.datasets.ImageFolder(
                     root=read_path, transform=transforms)
                 noise_dataloader = torch.utils.data.DataLoader(
@@ -40,19 +44,16 @@ def main():
 
                 store_path = './data/noisy_CIFAR10/train/generated_noisy_images/images'
                 clean_path = './data/noisy_CIFAR10/train/clean_images/images'
-                for i in range(10):
+                for i in range(noise_num):
                     noise, _ = next(iter(noise_dataloader))
                     if use_gpu:
                         noise = noise.cuda()
                     noisy_image = image + noise
                     save_image(noisy_image, store_path + '/{}.png'.format(train_index))
                     save_image(image, clean_path + '/{}.png'.format(train_index))
-                    num_per_class[selected_class] += 1
                     train_index += 1
-                # print("Generating training noisy image {} for class {}".format(train_index,
-                #                                                                classes[selected_class]))
-                # print(num_per_class)
-                _tqdm.update(batch_size)
+                num_per_class[selected_class] += 1
+                _tqdm.update(batch_size * 100)
 
 
         # elif test_num_per_class[selected_class] < 1000:
@@ -75,3 +76,6 @@ def main():
         #     print("Generating testing noisy image {} for class {}".format(test_index,
         #                                                                   classes[selected_class]))
         #     print(test_num_per_class)
+
+
+main()

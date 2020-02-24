@@ -43,9 +43,9 @@ def train():
     clean_dataloader = torch.utils.data.DataLoader(
         clean_dataset, batch_size=batch_size, shuffle=False)
 
-    denoising_model_path = './models/dncnn_models/DnCNN_model_500_epochs.pth'
     model = DnCNN(num_layers=17)
-    model.load_state_dict(torch.load(denoising_model_path))
+    # denoising_model_path = './models/dncnn_models/DnCNN_model_500_epochs.pth'
+    # model.load_state_dict(torch.load(denoising_model_path))
     if use_gpu:
         model = model.to(device)
     if (device.type == 'cuda') and (ngpu > 2):
@@ -53,11 +53,13 @@ def train():
     criterion = nn.MSELoss(size_average=False, reduction="sum")
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
+    epoch_plus = 0
+
     for epoch in range(num_epochs):
         epoch_losses = AverageMeter()
 
         with tqdm(total=(len(noisy_dataset) - len(noisy_dataset) % batch_size)) as _tqdm:
-            _tqdm.set_description('epoch: {}/{}'.format(epoch + 1 + 500, num_epochs + 500))
+            _tqdm.set_description('epoch: {}/{}'.format(epoch + 1 + epoch_plus, num_epochs + epoch_plus))
             for i, data in enumerate(zip(noisy_dataloader, clean_dataloader)):
                 noisy_image = data[0][0]
                 clean_image = data[1][0]
@@ -79,7 +81,7 @@ def train():
 
 
         torch.save(model.state_dict(), os.path.join('./models/dncnn_models',
-                                                    'DnCNN_model_{}_epochs.pth'.format(epoch + 1 + 500)))
+                                                    'DnCNN_model_{}_epochs.pth'.format(epoch + 1 + epoch_plus)))
 
 
 def main():
